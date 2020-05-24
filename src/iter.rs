@@ -11,11 +11,13 @@ pub trait Nodes {
     fn get_node(&mut self, index: NodeIndex) -> (Self::Entry, MaybeNodeIndex, MaybeNodeIndex);
 }
 
+#[derive(Clone)]
 enum Visit<E> {
     Elem(E),
     Node(NodeIndex),
 }
 
+#[derive(Clone)]
 pub struct InOrderIter<N>
 where
     N: Nodes,

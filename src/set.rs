@@ -8,6 +8,7 @@ use tree_core;
 use iter;
 use vec_like;
 
+
 /// A set based on splay tree.
 ///
 /// A splay tree based set is a self-adjusting data structure.
@@ -126,6 +127,22 @@ where
         } else {
             None
         }
+    }
+
+    fn node_mut(&mut self, index: usize) -> Option<&mut tree_core::Node<T, ()>> {
+        if index < self.tree.len() {
+                Some(self.tree.node_mut(index as tree_core::NodeIndex))
+        } else {
+            None
+        }
+    }
+
+    pub fn find_less<Q: ?Sized>(&mut self, value: &Q) -> Option<&T>
+    where
+        T: Borrow<Q>,
+        Q: Ord,
+    {
+        self.tree.find_less(value)
     }
 
     /// Finds a minimum element which
@@ -539,6 +556,10 @@ impl<T> SplaySet<T> {
         Iter::new(self)
     }
 
+    // pub fn iter_mut(&mut self) -> IterMut<T> {
+    //     IterMut::new(&mut self.tree)
+    // }
+
     /// Returns a vector like view of the set.
     ///
     /// # Examples
@@ -563,6 +584,48 @@ impl<T> SplaySet<T> {
         VecLike::new(&self.tree)
     }
 }
+
+
+// /// A mutable iterator over a SplayMap's entries.
+// pub struct IterMut<T> {
+//     set: VecLikeMut<T>,
+//     idx: usize
+// }
+
+// impl<T> IterMut<T> {
+//     fn new(set: &mut SplaySet<T>) -> Self {
+//         IterMut {
+//             set: set.as_vec_like_mut(),
+//             idx: 0
+//         }
+//     }
+// }
+// #[allow(mutable_transmutes)]
+// impl<T> Iterator for IterMut<T> {
+//     type Item = &mut T;
+
+//     fn next(&mut self) -> Option<&'a mut T> {
+//         if self.idx < self.set.tree.len() {
+//             let index = (self.idx - 1) as tree_core::NodeIndex;
+//             self.idx += 1;
+//             let node: &mut tree_core::Node<T, ()> = self.set.tree.node_mut(index);
+//             Some(&mut node.key)
+//         } else {
+//             None
+//         }
+//     }
+
+//     // fn nth(mut self, n: usize) -> Option<Self::Item> {
+//     //     if n < self.0.stack.len() {
+//     //         Some(self.0
+//     //     } else {
+//     //         None
+//     //     }
+//     // }
+// }
+
+
+
 impl<T> Default for SplaySet<T>
 where
     T: Ord,
@@ -728,6 +791,96 @@ impl<'a, T: 'a> Iterator for Iter<'a, T> {
         self.0.next().map(|(e, _)| e)
     }
 }
+
+impl<T> std::ops::Index<usize> for SplaySet<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index < self.tree.len() {
+            &self.tree.node_ref(index as tree_core::NodeIndex).key
+        } else {
+            panic!("Index {} out of bounds! Len: {}", index, self.len());
+        }
+    }
+}
+
+pub struct BetterIter<'a, T: Ord + 'a> {
+    set: VecLike<'a, T>,
+    pos: usize
+}
+
+impl<'a, T: Ord + 'a> BetterIter<'a, T> {
+    pub fn new(set: &'a mut SplaySet<T>) -> Self {
+        Self {
+            set: set.as_vec_like(),
+            pos: 0
+        }
+    }
+
+    pub fn new_start_at(set: &'a mut SplaySet<T>, pos: usize) -> Self {
+        Self {
+            set: set.as_vec_like(),
+            pos: pos
+        }
+    }
+}
+
+pub trait SuperIter<'a, T: Ord + 'a> {
+    fn better_iter_from(&'a mut self, pos: usize) -> BetterIter<'a, T>;
+}
+
+impl <'a, T: Ord + 'a> SuperIter<'a, T > for SplaySet<T> {
+    fn better_iter_from(&'a mut self, pos: usize) -> BetterIter<'a, T> {
+        BetterIter::new_start_at(self, pos)
+    }
+}
+
+impl<'a, T: Ord + 'a> Iterator for BetterIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pos += 1;
+        self.set.get(self.pos-1)
+    }
+
+    fn nth(&mut self, index: usize) -> Option<Self::Item> {
+        self.pos += (index + 1);
+        self.set.get(self.pos)
+    }
+}
+
+// pub struct BetterIterMut<'a, T: 'a> {
+//     set: VecLikeMut<'a, T>,
+//     pos: usize
+// }
+
+// impl<'a, T: 'a> Iterator for BetterIterMut<'a, T> {
+//     type Item = &'a mut T;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.pos += 1;
+//         self.set.get_mut(self.pos-1)
+//     }
+
+//     fn nth(&mut self, index: usize) -> Option<Self::Item> {
+//         self.pos += (index + 1);
+//         self.set.get_mut(self.pos)
+//     }
+// }
+
+// /// An Iterator over a SplaySet items.
+// pub struct IterMut<'a, T: 'a>(iter::IterMut<'a, T, ()>);
+// impl<'a, T: 'a> IterMut<'a, T> {
+//     fn new(set: &'a mut SplaySet<T>) -> Self {
+//         IterMut(set.tree.iter_mut())
+//     }v
+// }
+// impl<'a, T: 'a> Iterator for IterMut<'a, T> {
+//     type Item = &'a mut T;
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.0.next().map(|(e, _)| e)
+//     }
+// }
 
 /// An owning iterator over a SplaySet's items.
 pub struct IntoIter<T>(iter::IntoIter<T, ()>);
@@ -1028,6 +1181,8 @@ where
         self.inner.pop().map(|(v, _)| v)
     }
 
+
+
     /// Returns the index of the element that is equal to the given value,
     /// or `None` if the collection does not have no such element.
     ///
@@ -1084,6 +1239,11 @@ impl<'a, T: 'a> VecLikeMut<'a, T> {
     pub fn get(&self, index: usize) -> Option<&T> {
         self.inner.get(index).map(|(v, _)| v)
     }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        self.inner.get_node_mut(index).map(|n| &mut n.key)
+    }
+
 
     /// Returns the first element of the vector, or `None` if it is empty.
     ///
@@ -1180,6 +1340,7 @@ impl<'a, T: 'a> VecLikeMut<'a, T> {
 }
 
 /// An iterator over a VecLike's elements
+#[derive(Clone)]
 pub struct VecLikeIter<'a, T: 'a>(vec_like::Iter<'a, T, ()>);
 impl<'a, T: 'a> Iterator for VecLikeIter<'a, T> {
     type Item = &'a T;

@@ -18,7 +18,7 @@ mod std {
 }
 
 mod tree_core;
-mod iter;
+pub mod iter;
 mod vec_like;
 pub mod map;
 pub mod set;

@@ -104,6 +104,32 @@ where
             other => other,
         })
     }
+    pub fn find_less<Q: ?Sized>(&mut self, key: &Q) -> Option<&K>
+    where
+        K: Borrow<Q>,
+        Q: Ord,
+    {
+        let found = std::cell::RefCell::new(false);
+        self.find_bound_below(|k| {
+            match key.cmp(k.borrow()) {
+                Ordering::Equal => Ordering::Less,
+                other => other,
+            }
+
+
+                        // match key.cmp(k.borrow()) {
+            // Ordering::Less => Ordering::Greater,
+            // Ordering::Equal => {
+            //     if *found.borrow() == true {
+            //         Ordering::Equal
+            //     } else {
+            //         *found.borrow_mut() = true;
+            //         Ordering::Equal
+            //     }
+            // }
+            // Ordering::Greater => Ordering::Less
+        })
+    }
     pub fn get<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V>
     where
         K: Borrow<Q>,
@@ -325,6 +351,28 @@ where
                     root_rgt = self.splay_lftmost(root_rgt);
                     self.root_mut().rgt = root_rgt;
                     Some(&self.node_ref(root_rgt).key)
+                } else {
+                    None
+                }
+            } else {
+                Some(&self.root_ref().key)
+            }
+        })
+    }
+
+    fn find_bound_below<F>(&mut self, cmp: F) -> Option<&K>
+    where
+        F: Fn(&K) -> Ordering,
+    {
+        self.root().and_then(move |root| {
+            let (root, order) = self.splay_by(root, cmp);
+            self.root = root;
+            if let Ordering::Less = order {
+                let mut root_lft = self.root_ref().lft;
+                if root_lft != NULL_NODE {
+                    root_lft = self.splay_rgtmost(root_lft);
+                    self.root_mut().lft = root_lft;
+                    Some(&self.node_ref(root_lft).key)
                 } else {
                     None
                 }

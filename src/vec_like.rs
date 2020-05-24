@@ -85,6 +85,15 @@ impl<'a, K: 'a, V: 'a> VecLikeMut<'a, K, V> {
             None
         }
     }
+
+    pub fn get_node_mut(&mut self, index: usize) -> Option<&mut tree_core::Node<K, V>> {
+        if index < self.tree.len() {
+            Some(self.tree.node_mut(index as tree_core::NodeIndex))
+        } else {
+            None
+        }
+    }
+
     pub fn first(&self) -> Option<(&K, &V)> {
         self.get(0)
     }
@@ -110,7 +119,8 @@ impl<'a, K: 'a, V: 'a> VecLikeMut<'a, K, V> {
     }
 }
 
-pub struct Iter<'a, K: 'a, V: 'a>(slice::Iter<'a, tree_core::Node<K, V>>);
+#[derive(Clone)]
+pub struct Iter<'a, K: 'a, V: 'a>(pub slice::Iter<'a, tree_core::Node<K, V>>);
 impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
     fn next(&mut self) -> Option<Self::Item> {
